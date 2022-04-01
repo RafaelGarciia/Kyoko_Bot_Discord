@@ -41,6 +41,7 @@ class Musica(commands.Cog):
             self.is_playing = False
   #---------^
 
+
   # Comando inicial para tocar musica.
     @commands.command(name="Tocar", aliases=["p", "play"], help="| 'p'   'play' | Reproduz uma música selecionada do youtube.")
     async def play(self, ctx, *args):
@@ -57,8 +58,11 @@ class Musica(commands.Cog):
           # Pesquisa a musica no youtube:
             with YoutubeDL(self.YDL_OPTIONS) as yt_dwl:
                 try:
+                    print()
+                    print(f"\033[36m|\033[m Pesquisando por: \033[36m{query}\033[m.\033[36m")
                     info = yt_dwl.extract_info("ytsearch:%s" % query, download=False)["entries"][0]
-                    
+                    print(f"\033[32m|\033[m Emcontrado \033[36m{info['title']}\033[m.")
+                    print()
                     """for item in info:
                         input(f'{item} - {info[item]}')
                     
@@ -107,7 +111,7 @@ class Musica(commands.Cog):
                         else:
                             await self.bot_voice_channel.move_to(self.music_queue[0]["vc_channel"])
                         await self.play_music_loop(ctx)
-                        print('Tocar musica, é para ja')
+                        #print('Tocar musica, é para ja')
                     else:
                         self.is_playing = False
                         await self.bot_voice_channel.disconnect()
@@ -154,20 +158,28 @@ class Musica(commands.Cog):
     @commands.command(name="Fila", aliases=["f", "lista"], help="| 'f'   'lista' |\nExibe as músicas atuais na fila.")
     async def queue(self, ctx):
         item_queue = []
+        w = ""
         for i in range(0, len(self.music_queue)):
+            w = f"{w}\n {i+1} - **{self.music_queue[i]['title']}**"
             item_queue.append(self.music_queue[i]["title"])
         if len(item_queue) > 0:
 
-            # Criar Embed
-        
+            embedvc = discord.Embed(
+                title = (f"| Fila :"),
+                colour = 0x00bb00, # Verde
+                description = w
+            )
+            await ctx.send(embed=embedvc)
+            print(f"\033[32m|\033[m Fila :")
             for i in range(len(item_queue)):
-                print(f"{i} - {item_queue[i]}")
+                print(f"\t{i+1} - \033[36m{item_queue[i]}\033[m")
         else:
             
             # Criar Embed
 
             print("Não existe musica na fila no momento.")
-  #---------^
+        print('')
+  #-----^
 
   # Comando para limpar a fila
     @commands.command(name="Remover", aliases=["r", "remove"], help="| 'r'   'remove' |\nRemove todas as musicas da fila, ou apenas as que foram especificadas.")
@@ -175,17 +187,49 @@ class Musica(commands.Cog):
         if arg == ():
             self.music_queue = []
         else:
-            confirm = []
+            item_args = []
             for item in arg:
-                if item > 0:
-                   confirm.append(item)
+                if item.isnumeric():
+                    item = int(item)
+                    item_args.append(item)
                 else:
-                    print(f'Erro, numero invalido.')
+                    embedvc = discord.Embed(
+                        title = f"| Atenção !",
+                        colour= 0xbbbb00, # Amarelo
+                        description = f"'**{item}**' não é um indice.\nTente usar o numero da fila."
+                    )
+                    await ctx.send(embed=embedvc)
+                    print(f"\033[31m|\033[m \033[90m{ctx.author}\033[m: Tentou remover \033[31m{item}\033[m, mas não é um Indice.")
                     return
-            for item in confirm:
-                self.music_queue.pop(item)
-            
-            print(f"itens removidos {confirm}")
+            item_args.sort(reverse=True)
+            for item in item_args:
+                if item > 0 and item <= len(self.music_queue):
+                   pass
+                else:                    
+                    embedvc = discord.Embed(
+                        title = "| Atenção !",
+                        colour= 0xbbbb00, # Amarelo
+                        description = f"A fila só vai até o item {len(self.music_queue)}"
+                    )
+                    await ctx.send(embed=embedvc)
+                    print(f"\033[31m|\033[m \033[90m{ctx.author}\033[m: Tentou remover \033[31m{item}\033[m, mas não há musica.")
+                    return
+        
+            desc = ""
+            print(f"\033[32m|\033[m Removido :")
+            for item in item_args:
+                print(f"\t{item} - \033[31m{self.music_queue[item-1]['title']}\033[m")
+                desc = f"{desc}\n{item} - **{self.music_queue[item-1]['title']}**"
+                self.music_queue.pop(item-1)
+
+            embedvc = discord.Embed(
+                title = "| Itens removidos :",
+                colour = 0x00bb00, # Verde
+                description = desc
+            )
+            await ctx.send(embed=embedvc)
+            await self.queue(ctx)
+
   #---------^
 
   # Comando para desconectar o bot no canal de voz

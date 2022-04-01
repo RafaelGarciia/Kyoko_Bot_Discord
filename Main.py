@@ -4,24 +4,28 @@ import os
 import BOT_Token
 
 # Cores: \033[{cor}m 'texto' \033[m
-# Error         = 31: Vermelho
-# Correto       = 32: Verde
-# Alerta        = 33: Amarelo
+# Error         = 31: Vermelho      0xbb0000
+# Correto       = 32: Verde         0x00bb00
+# Alerta        = 33: Amarelo       0xbbbb00
 # Processamento = 36: Cyan
 # Usuario       = 90: Cinza Escuro
 
+#https://convertingcolors.com
+
 
 def load_cogs(bot): # Carrega todos os arquivos que estão nas pastas.
-    #bot.load_extension("manager")
     for file in os.listdir("./Extensions"):
-        if file.endswith(".py"):
-            print(f"\033[32m|\033[m Modulo '{file}' carregado.")
-            bot.load_extension(f"Extensions.{file[:-3]}")
-    print('\033[32m|\033[m Arquivos carregados...')
+        try:
+            if file.endswith(".py"):
+                bot.load_extension(f"Extensions.{file[:-3]}")
+                print(f"\033[32m|\033[m Modulo {file:^20} :\033[32mV\033[m:")
+        except Exception as e:
+            print(f"\033[31m|\033[m Modulo {file:^20} :\033[31mX\033[m:\n\033[31mError:\033[m {e}\n")
+    print()
 #-----------^
 
 # Main:
-#os.system('mode 70,30');os.system('cls')
+os.system('mode 70,30');os.system('cls')
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix='/', case_insensitive = True, intents=intents)
