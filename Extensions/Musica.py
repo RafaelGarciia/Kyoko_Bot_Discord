@@ -1,3 +1,5 @@
+from dis import disco
+from turtle import title
 from discord.ext import commands
 from youtube_dl import YoutubeDL
 from random import randint
@@ -24,16 +26,18 @@ class Musica(commands.Cog):
             self.bot_voice_channel.play(discord.FFmpegPCMAudio(self.music_queue[0]["source"], **self.FFMPEG_OPTIONS), after=lambda e: self.play_music_loop(ctx))
             
             if self.is_playing == True:
-              # Embed
                 words = ["Mais uma musica. Vamos apreciar !"]
+
                 embedvc = discord.Embed(
-                    title = words[randint(0, (len(words)-1))],
+                    title = "| Tocando :",
+                    colour = 0x00bb00, # Verde
                     description = f"[{self.music_queue[0]['title']}]({self.music_queue[0]['webpage_url']})\n`{self.music_queue[0]['duration']}`"
                 )
                 embedvc.set_thumbnail(url=self.music_queue[0]["thumbnail"])
                 embedvc.set_footer(text=f": Pedido por `{self.music_queue[0]['author']}` :")
+                await ctx.channel.send(words[randint(0, (len(words)-1))])
                 await ctx.send(embed=embedvc)
-              #-^
+                print(f"Tocando agora: {self.music_queue[0]['title']} : Pedido por {self.music_queue[0]['author']}")
 
             self.music_queue.pop(0)
             self.is_playing = True
@@ -50,19 +54,24 @@ class Musica(commands.Cog):
             voice_channel = ctx.author.voice.channel # Nome do canal de voz
         except:
 
-            # Criar uma Embed
 
+            words = ["Entre em um canal de voz. Seu burro.", "Seu burro, voce tem de entrar em um canal de voz."]
+            embedvc = discord.Embed(
+                title = "| Atenção !",
+                colour = 0xbbbb00, # Amarelo
+                description = f"Você não está em um canal de voz."
+            )
+            await ctx.channel.send(words[randint(0, (len(words)-1))])
+            await ctx.send(embed=embedvc)
             print(f"\033[33m|\033[m {ctx.author} tentou iniciar uma musica, mas não estava em um canal de voz.")
             return # Finaliza a Função.
         else:
           # Pesquisa a musica no youtube:
             with YoutubeDL(self.YDL_OPTIONS) as yt_dwl:
                 try:
-                    print()
-                    print(f"\033[36m|\033[m Pesquisando por: \033[36m{query}\033[m.\033[36m")
+                    print(f"\n\033[36m|\033[m Pesquisando por: \033[36m{query}\033[m.\033[36m")
                     info = yt_dwl.extract_info("ytsearch:%s" % query, download=False)["entries"][0]
-                    print(f"\033[32m|\033[m Emcontrado \033[36m{info['title']}\033[m.")
-                    print()
+                    print(f"\n\033[32m|\033[m Emcontrado \033[36m{info['title']}\033[m.")
                     """for item in info:
                         input(f'{item} - {info[item]}')
                     
@@ -88,14 +97,27 @@ class Musica(commands.Cog):
           #---------^
             if pas == False:
                 
-                # Criar uma Embed
+                words = ["É oque? não consegui entender !", "Escreva direito, seu burro !"]
 
+                embedvc = discord.Embed(
+                    title = f"| Erro ao carregar item !",
+                    colour = 0xbb0000, # Vermelho
+                    decription = f"Não foi possivel carregar o item.\n:{query}:"
+                )
+                await ctx.channel.send(words[randint(0, (len(words)-1))])
+                await ctx.send(embed=embedvc)
                 print(f"\033[31m|\033[m Erro ao carregar item: {args[0]}\n {query}")
             else:
-                if len(self.music_queue) != 0 or self.is_playing == True:
+                if len(self.music_queue) != 0 or self.is_playing == True:    
+                    words = ["Ahhh Nice musica. Vou colocar na fila !", "Musica boa, vai para a fila !"]
                     
-                    # Criar uma Embed
-
+                    embedvc = discord.Embed(
+                        title = f"| Musica adicionada !",
+                        colour = 0x00bb00, # Verde
+                        description = f"{ctx.author} adicionou :\n{info_music['title']}\nà fila !"
+                    )
+                    await ctx.channel.send(words[randint(0, (len(words)-1))])
+                    await ctx.send(embed=embedvc)
                     print(f"\033[32m|\033[90m {ctx.author}\033[m adicionou a música \033[36m{info_music['title']}\033[m à fila!")
                 self.music_queue.append(info_music)
                 if self.is_playing == False:
@@ -104,8 +126,14 @@ class Musica(commands.Cog):
                         if self.bot_voice_channel == None:
                             self.bot_voice_channel = await self.music_queue[0]["vc_channel"].connect()
                             if self.bot_voice_channel == None:
+                                words = []
 
-                                # Criar uma Embed
+                                embedvc = discord.Embed(
+                                    title = f"| Erro !",
+                                    colour = 0xbb0000, # Vermelho
+                                    description = f"Ouve um erro ao conectar ao canal de voz.\nUtilize '/sair' para reiniciar o bot."
+                                )
+
 
                                 print("Não foi possível conectar ao canal de voz.")
                         else:
