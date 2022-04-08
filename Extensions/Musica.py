@@ -3,7 +3,6 @@ from youtube_dl     import YoutubeDL
 from random         import randint
 import discord
 
-
 class Musica(commands.Cog):
   # Função inicial que declara as variaveis globais.
     def __init__(self, bot_pass) -> None:
@@ -26,19 +25,19 @@ class Musica(commands.Cog):
     async def play_music_loop(self, ctx):
         if len(self.music_queue) > 0:
             self.bot_voice_channel.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(self.music_queue[0]["source"], **self.FFMPEG_OPTIONS)), after=lambda e: ctx.bot.loop.create_task(self.check_queue(ctx)))
-
+            self.is_playing = True
+            
             embedvc = discord.Embed(
                 title = "| Tocando :",
                 colour = 0x00bb00, # Verde
                 description = f"[{self.music_queue[0]['title']}]({self.music_queue[0]['webpage_url']})\n`{self.music_queue[0]['duration']}`"
             )
             embedvc.set_thumbnail(url=self.music_queue[0]["thumbnail"])
-            embedvc.set_footer(text=f": Pedido por `{self.music_queue[0]['author']}` :")
+            embedvc.set_footer(text=f": por {self.music_queue[0]['author']} :")
             await ctx.send(embed=embedvc)
-            print(f"Tocando agora: {self.music_queue[0]['title']} : Pedido por {self.music_queue[0]['author']}")
-
+            print(f"\033[32m>\033[m Tocando agora:\n\033[32m|\033[m  \033[36m{self.music_queue[0]['title']}\033[m : \033[90m{self.music_queue[0]['author']}\033[m")
+            
             self.music_queue.pop(0)
-            self.is_playing = True
         else:
             self.is_playing = False
   #---------^
@@ -51,15 +50,11 @@ class Musica(commands.Cog):
         try:
             voice_channel = ctx.author.voice.channel # Nome do canal de voz
         except:
-
-
-            words = ["Entre em um canal de voz. Seu burro.", "Seu burro, voce tem de entrar em um canal de voz."]
             embedvc = discord.Embed(
                 title = "| Atenção !",
                 colour = 0xbbbb00, # Amarelo
                 description = f"Você não está em um canal de voz."
             )
-            await ctx.channel.send(words[randint(0, (len(words)-1))])
             await ctx.send(embed=embedvc)
             print(f"\033[33m|\033[m {ctx.author} tentou iniciar uma musica, mas não estava em um canal de voz.")
             return # Finaliza a Função.
@@ -69,7 +64,8 @@ class Musica(commands.Cog):
                 try:
                     print(f"\n\033[36m|\033[m Pesquisando por: \033[36m{query}\033[m.\033[36m")
                     info = yt_dwl.extract_info("ytsearch:%s" % query, download=False)["entries"][0]
-                    print(f"\n\033[32m|\033[m Emcontrado \033[36m{info['title']}\033[m.")
+                    # print(f"\033[32m|\033[m Encontrado \033[36m{info['title']}\033[m.")
+                    print()
                     
                     """for item in info:
                         input(f'{item} - {info[item]}')
@@ -96,27 +92,22 @@ class Musica(commands.Cog):
                     pas = False     # Não conseguiu achar a musica
           #---------^
             if pas == False:
-                
-                words = ["É oque? não consegui entender !", "Escreva direito, seu burro !"]
-
                 embedvc = discord.Embed(
                     title = f"| Erro ao carregar item !",
                     colour = 0xbb0000, # Vermelho
                     decription = f"Não foi possivel carregar o item.\n:{query}:"
                 )
-                await ctx.channel.send(words[randint(0, (len(words)-1))])
                 await ctx.send(embed=embedvc)
-                print(f"\033[31m|\033[m Erro ao carregar item: {args[0]}\n {query}")
+                print(f"\033[31m|\033[m Erro ao carregar item:\n {query}")
             else:
-                if len(self.music_queue) > 1 or self.is_playing == True:    
-                    words = ["Ahhh Nice musica. Vou colocar na fila !", "Musica boa, vai para a fila !"]
-                    
+                if len(self.music_queue) > 1 or self.is_playing == True:
                     embedvc = discord.Embed(
-                        title = f"| Musica adicionada !",
+                        title = f"| Musica adicionada á fila :",
                         colour = 0x00bb00, # Verde
-                        description = f"{ctx.author} adicionou :\n{info_music['title']}\nà fila !"
+                        description = f"\n[{info_music['title']}]({info_music['webpage_url']})\n"
                     )
-                    await ctx.channel.send(words[randint(0, (len(words)-1))])
+                    embedvc.set_thumbnail(url=info_music["thumbnail"])
+                    embedvc.set_footer(text=f": por {info_music['author']} :")
                     await ctx.send(embed=embedvc)
                     print(f"\033[32m|\033[90m {ctx.author}\033[m adicionou a música \033[36m{info_music['title']}\033[m à fila!")
                 self.music_queue.append(info_music)
@@ -197,8 +188,8 @@ class Musica(commands.Cog):
         item_queue = []
         w = ""
         for i in range(0, len(self.music_queue)):
-            w = f"{w}\n {i+1} - **{self.music_queue[i]['title']}**"
-            item_queue.append(self.music_queue[i]["title"])
+            w = f"{w}\n {i+1} - [{self.music_queue[i]['title':55][:55]}]({self.music_queue[i]['webpage_url']})"
+            item_queue.append(f'{self.music_queue[i]["title"]}')
         if len(item_queue) > 0:
 
             embedvc = discord.Embed(
