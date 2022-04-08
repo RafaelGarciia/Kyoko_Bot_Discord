@@ -4,6 +4,7 @@ import os
 import json
 import sys
 
+
 # Cores: \033[{cor}m 'texto' \033[m
 # Error         = 31: Vermelho      0xbb0000
 # Correto       = 32: Verde         0x00bb00
