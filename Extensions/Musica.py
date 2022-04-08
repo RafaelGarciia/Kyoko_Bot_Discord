@@ -3,7 +3,6 @@ from youtube_dl     import YoutubeDL
 from random         import randint
 import discord
 
-
 class Musica(commands.Cog):
   # Função inicial que declara as variaveis globais.
     def __init__(self, bot_pass) -> None:

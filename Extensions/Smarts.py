@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 
+
 class Smarts(commands.Cog):
     def __init__(self, bot_pass):
         self.bot = bot_pass
