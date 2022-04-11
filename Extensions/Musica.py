@@ -9,9 +9,9 @@ class Musica(commands.Cog):
         self.bot = bot_pass
 
         self.FFMPEG_OPTIONS     = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-        self.YDL_OPTIONS        = {"format": "bestaudio", "noplaylist":True, "outtmpl": 'music'} #{"format": "139", "noplaylist": True, "outtmpl": 'music', "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": 'mp3', "preferredquality": '128'}]}
+        self.YDL_OPTIONS        = {"format": "bestaudio", "noplaylist":True} #{"format": "139", "noplaylist": True, "outtmpl": 'music', "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": 'mp3', "preferredquality": '128'}]}
         self.music_queue        = []
-        self.is_playing         = False
+        self.is_playing         = {'playing': False, 'title': None, 'thumbnail': None, 'webpage_url': None, 'author': None}
         self.bot_voice_channel  = None
   #-----^
 
@@ -25,21 +25,20 @@ class Musica(commands.Cog):
     async def play_music_loop(self, ctx):
         if len(self.music_queue) > 0:
             self.bot_voice_channel.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(self.music_queue[0]["source"], **self.FFMPEG_OPTIONS)), after=lambda e: ctx.bot.loop.create_task(self.check_queue(ctx)))
-            self.is_playing = True
-            
+            self.is_playing.update({'playing': True, 'title': self.music_queue[0]["title"], 'thumbnail': self.music_queue[0]["thumbnail"], 'webpage_url': self.music_queue[0]['webpage_url'], 'author_name': self.music_queue[0]['author_name'], 'author_id': self.music_queue[0]['author_id']})
+            self.music_queue.pop(0)
+
             embedvc = discord.Embed(
                 title = "| Tocando :",
                 colour = 0x00bb00, # Verde
-                description = f"[{self.music_queue[0]['title']}]({self.music_queue[0]['webpage_url']})\n`{self.music_queue[0]['duration']}`"
+                description = f"[{self.is_playing['title']}]({self.is_playing['webpage_url']})"
             )
-            embedvc.set_thumbnail(url=self.music_queue[0]["thumbnail"])
-            embedvc.set_footer(text=f": por {self.music_queue[0]['author']} :")
+            embedvc.set_thumbnail(url=self.is_playing["thumbnail"])
+            embedvc.set_footer(text=f": Pedido por {self.is_playing['author_name']} :")
             await ctx.send(embed=embedvc)
-            print(f"\033[32m>\033[m Tocando agora:\n\033[32m|\033[m  \033[36m{self.music_queue[0]['title']}\033[m : \033[90m{self.music_queue[0]['author']}\033[m")
-            
-            self.music_queue.pop(0)
+            print(f"\033[32m>\033[m Tocando agora:\n\033[32m|\033[m  \033[36m{self.is_playing['title']}\033[m : \033[90m{self.is_playing['author_name']}\033[m")
         else:
-            self.is_playing = False
+            self.is_playing['playing'] = False
   #---------^
 
 
@@ -61,17 +60,13 @@ class Musica(commands.Cog):
         else:
           # Pesquisa a musica no youtube:
             with YoutubeDL(self.YDL_OPTIONS) as yt_dwl:
+                mens = []
                 try:
+                    mens.append(await ctx.send(':mag_right: Pesquisando...'))
                     print(f"\n\033[36m|\033[m Pesquisando por: \033[36m{query}\033[m.\033[36m")
                     info = yt_dwl.extract_info("ytsearch:%s" % query, download=False)["entries"][0]
                     # print(f"\033[32m|\033[m Encontrado \033[36m{info['title']}\033[m.")
-                    print()
-                    
-                    """for item in info:
-                        input(f'{item} - {info[item]}')
-                    
-                    print("fim")
-                    input()"""
+                    print('\033[m')
 
                     info_music = {
                         "source":       info["formats"][3]["url"],
@@ -84,14 +79,17 @@ class Musica(commands.Cog):
                         "webpage_url":  info["webpage_url"],
                         "yt_channel":   info["channel"],
                         "vc_channel":   voice_channel,
-                        "author":       ctx.author.name
+                        "author_name":  ctx.author.name,
+                        "author_id":    ctx.author.id
                     }
 
-                    pas = True      # Conseguiu achar a musica
                 except Exception:
-                    pas = False     # Não conseguiu achar a musica
+                    mens.append(await ctx.send('Erro ao carregar'))
+                    info_music = False     # Não conseguiu achar a musica
           #---------^
-            if pas == False:
+            for item in mens:
+                await item.delete()
+            if info_music == False:
                 embedvc = discord.Embed(
                     title = f"| Erro ao carregar item !",
                     colour = 0xbb0000, # Vermelho
@@ -100,24 +98,23 @@ class Musica(commands.Cog):
                 await ctx.send(embed=embedvc)
                 print(f"\033[31m|\033[m Erro ao carregar item:\n {query}")
             else:
-                if len(self.music_queue) > 1 or self.is_playing == True:
+                if len(self.music_queue) > 1 or self.is_playing['playing'] == True:
                     embedvc = discord.Embed(
                         title = f"| Musica adicionada á fila :",
                         colour = 0x00bb00, # Verde
                         description = f"\n[{info_music['title']}]({info_music['webpage_url']})\n"
                     )
                     embedvc.set_thumbnail(url=info_music["thumbnail"])
-                    embedvc.set_footer(text=f": por {info_music['author']} :")
+                    embedvc.set_footer(text=f": Adicionado por {info_music['author_name']} :")
                     await ctx.send(embed=embedvc)
                     print(f"\033[32m|\033[90m {ctx.author}\033[m adicionou a música \033[36m{info_music['title']}\033[m à fila!")
                 self.music_queue.append(info_music)
-                if self.is_playing == False:
+                if self.is_playing['playing'] == False:
                   # reproduz a musica inicial
                     if len(self.music_queue) > 0:
                         if self.bot_voice_channel == None:
                             self.bot_voice_channel = await self.music_queue[0]["vc_channel"].connect()
                             if self.bot_voice_channel == None:
-                                words = []
 
                                 embedvc = discord.Embed(
                                     title = f"| Erro !",
@@ -125,14 +122,13 @@ class Musica(commands.Cog):
                                     description = f"Ouve um erro ao conectar ao canal de voz.\nUtilize '/sair' para reiniciar o bot."
                                 )
 
-
                                 print("Não foi possível conectar ao canal de voz.")
                         else:
                             await self.bot_voice_channel.move_to(self.music_queue[0]["vc_channel"])
                         await self.play_music_loop(ctx)
                         #print('Tocar musica, é para ja')
                     else:
-                        self.is_playing = False
+                        self.is_playing['playing'] = False
                         await self.bot_voice_channel.disconnect()
                   #-----^
   #---------------^
@@ -140,16 +136,16 @@ class Musica(commands.Cog):
     # Comando para pausar e resumir
     @commands.command(name="Pause_resume", aliases=["pause", "pausar"], help="| 'pr'   'parar'   'pausar'   'resumir' | Pausa a música atual que está sendo reproduzida, ou retoma quando a musica esta parada.")
     async def pause_resume(self, ctx):
-        if self.is_playing:
+        if self.is_playing['playing']:
             self.bot_voice_channel.pause()
-            self.is_playing = False
+            self.is_playing['playing'] = False
 
             # Criar embed
 
             print(f"\033[32m|\033[90m {ctx.author}\033[m pausou a musica!")
         else:
             self.bot_voice_channel.resume()
-            self.is_playing = True
+            self.is_playing['playing'] = True
 
             # Criar embed
 
@@ -158,11 +154,11 @@ class Musica(commands.Cog):
 
     @commands.command(name="Resume", aliases=["Resumir"], help="| 'resume' 'resumir' | Da play em uma musica parada.")
     async def resume(self, ctx):
-        if self.is_playing:
+        if self.is_playing['playing']:
             ctx.send(f"Musica já esta tocando.")
         else:
             self.bot_voice_channel.resume()
-            self.is_playing = True
+            self.is_playing['playing'] = True
             print(f"\033[32m|\033[90m {ctx.author}\033[m retomou a musica!")
   
   # Comando para pular a musica
@@ -186,9 +182,9 @@ class Musica(commands.Cog):
     @commands.command(name="Fila", aliases=["f", "lista"], help="| 'f'   'lista' |\nExibe as músicas atuais na fila.")
     async def queue(self, ctx):
         item_queue = []
-        w = ""
+        w = f"**Tocando agora:** [{self.is_playing['title']}]({self.is_playing['webpage_url']})\n"
         for i in range(0, len(self.music_queue)):
-            w = f"{w}\n {i+1} - [{self.music_queue[i]['title':55][:55]}]({self.music_queue[i]['webpage_url']})"
+            w = f"{w}\n **{i+1} -** [{self.music_queue[i]['title'][:55]}]({self.music_queue[i]['webpage_url']})"
             item_queue.append(f'{self.music_queue[i]["title"]}')
         if len(item_queue) > 0:
 
@@ -263,7 +259,7 @@ class Musica(commands.Cog):
   # Comando para desconectar o bot no canal de voz
     @commands.command(name="Sair", aliases=["s", "leave"], help="| 's'   'leave' |\nDesconeta o bot do chat de voz.")
     async def disconnect(self, ctx):
-        self.is_playing = False
+        self.is_playing['playing'] = False
         await self.bot_voice_channel.disconnect()
         print("Bot Desconectado do canal de voz.")
   #-----^
